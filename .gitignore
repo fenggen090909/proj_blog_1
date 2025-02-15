@@ -1,0 +1,17 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 虚拟环境
+venv/
+.env
+
+# IDE 相关
+.vscode/
+.idea/
+*.iml
+
+# 日志文件
+*.log
+*.sqlite3

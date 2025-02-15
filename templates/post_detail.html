@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <title>{{ post.title }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h2 class="mt-4">{{ post.title }}</h2>
+        <p>{{ post.content }}</p>
+        <p class="text-muted">发布于 {{ post.date_posted.strftime('%Y-%m-%d %H:%M') }}</p>
+
+        <!-- 显示评论 -->
+        <h4 class="mt-4">评论</h4>
+        <ul class="list-group">
+            {% for comment in comments %}
+            <li class="list-group-item">
+                <strong>{{ comment.author.username }}</strong> 说：
+                <p>{{ comment.content }}</p>
+                <p class="text-muted">{{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}</p>
+
+                <!-- 只有作者可以删除自己的评论 -->
+                {% if current_user.is_authenticated and comment.author.id == current_user.id %}
+                <form action="{{ url_for('main.delete_comment', comment_id=comment.id) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- 发表评论 -->
+        {% if current_user.is_authenticated %}
+        <h4 class="mt-4">发表评论</h4>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.content.label }} {{ form.content(class="form-control", rows="3") }}
+            </div>
+            <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
+        </form>
+        {% else %}
+        <p class="text-muted">请 <a href="{{ url_for('main.login') }}">登录</a> 后发表评论。</p>
+        {% endif %}
+
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">返回首页</a>
+    </div>
+</body>
+</html>
