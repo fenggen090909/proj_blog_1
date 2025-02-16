@@ -27,3 +27,44 @@ window.addEventListener('DOMContentLoaded', () => {
         scrollPos = currentTop;
     });
 })
+
+
+const loadMoreButton = document.getElementById('load-more');
+const newPostsContainer = document.getElementById('new-posts');
+const postListContainer = document.getElementById('post-list');
+
+let offset = 3; // 初始偏移量为 3，因为已经加载了 3 篇文章
+const limit = 3; // 每次加载 10 篇文章
+
+loadMoreButton.addEventListener('click', function(event) {
+    event.preventDefault();
+
+    fetch(`/load_more_posts?offset=${offset}&limit=${limit}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) { // 检查是否还有更多文章
+                data.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'post-preview';
+                    postDiv.innerHTML = `
+                        <a href="post.html">
+                            <h2 class="post-title">${post.title}</h2>
+                            <h3 class="post-subtitle">sub_title</h3>
+                        </a>
+                        <p class="post-meta">
+                            Posted by
+                            <a href="#">Gen Feng</a>
+                            on ${post.date_posted}
+                        </p>
+                    `;
+                    newPostsContainer.appendChild(postDiv);
+                    newPostsContainer.appendChild(document.createElement('hr'));
+                });
+                offset += data.length; // 更新偏移量
+            } else {
+                // 没有更多文章了，可以禁用按钮或显示提示信息
+                loadMoreButton.disabled = true;
+                loadMoreButton.textContent = "没有更多文章了";
+            }
+        });
+});

@@ -1,61 +1,90 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_user, logout_user, login_required, current_user
+import os
 from app import db
+import logging
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask_login import login_user, logout_user, login_required, current_user
+# 注意：这里移除了 from app import db
 from app.models import User, Post, Comment
 from app.forms import RegisterForm, LoginForm, PostForm, CommentForm
+import markdown
 
 # 创建 Blueprint
 main = Blueprint('main', __name__)
 
+logging.basicConfig(filename='my_app.log',
+                    level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 @main.route('/')
 def index():
-    posts = Post.query.order_by(Post.date_posted.desc()).all()  # ✅ 获取所有文章，按时间倒序
+    # return render_template('index.html')
+    posts = Post.query.order_by(Post.date_posted.desc()).limit(3).all()  # ✅ 获取所有文章，按时间倒序
+    for post in posts:
+        post.date_posted_readable = format_date(post.date_posted)
     return render_template('index.html', posts=posts)
 
-@main.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegisterForm()
-    if form.validate_on_submit():
-        existing_user = User.query.filter_by(username=form.username.data).first()
-        if existing_user:
-            flash('用户名已存在，请选择其他用户名', 'danger')
-            return redirect(url_for('main.register'))
+def format_date(date):
+    if date:
+        return date.strftime('%b %d, %Y %H:%M:%S')  # 自定义日期格式
+    return ''
 
-        new_user = User(username=form.username.data, password=form.password.data)
-        db.session.add(new_user)
-        db.session.commit()
+@main.route('/load_more_posts', methods=['GET'])
+def load_more_posts():
 
-        flash('注册成功！请登录。', 'success')
-        return redirect(url_for('main.login'))
 
-    return render_template('register.html', form=form)
+    # 获取请求参数，例如 offset 和 limit，用于分页
+    offset = request.args.get('offset', type=int, default=0)
+    limit = request.args.get('limit', type=int, default=10)  # 默认每页10篇文章
 
-@main.route('/login', methods=['GET', 'POST'])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.password == form.password.data:
-            login_user(user)
-            flash('登录成功！', 'success')
-            return redirect(url_for('main.dashboard'))
-        else:
-            flash('用户名或密码错误', 'danger')
+    # 查询更多文章，这里使用了 offset 和 limit 进行分页
+    more_posts = Post.query.order_by(Post.date_posted.desc()).offset(offset).limit(limit).all()
 
-    return render_template('login.html', form=form)
+    # 将文章数据转换为 JSON 格式
+    post_list = []
+    for post in more_posts:
+        post_data = {
+            'title': post.title,  # 假设你的 Post 模型有 title 属性
+            'date_posted': post.date_posted.strftime('%Y-%m-%d %H:%M:%S'), # 格式化日期时间
+            # ... 其他需要的文章属性
+        }
+        post_list.append(post_data)
 
-@main.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('你已退出登录', 'info')
-    return redirect(url_for('main.login'))
+    return jsonify(post_list)
 
-@main.route('/dashboard')
-@login_required
-def dashboard():
-    return "这是一个受限页面，只有登录用户可以看到！"
 
+# @main.route('/register', methods=['GET', 'POST'])
+# def register():
+#     # from app import db  # 将 from app import db 移动到函数内部
+#     form = RegisterForm()
+#     if form.validate_on_submit():
+#         existing_user = User.query.filter_by(username=form.username.data).first()
+#         if existing_user:
+#             flash('用户名已存在，请选择其他用户名', 'danger')
+#             return redirect(url_for('main.register'))
+#
+#         new_user = User(username=form.username.data, password=form.password.data)
+#         db.session.add(new_user)
+#         db.session.commit()
+#
+#         flash('注册成功！请登录。', 'success')
+#         return redirect(url_for('main.login'))
+#
+#     return render_template('register.html', form=form)
+
+@main.route('/static/<int:post_id>')
+def post(post_id):
+    post = Post.query.get_or_404(post_id)
+    logging.debug(post.author.username)
+    post.date_posted = format_date(post.date_posted)
+    logging.debug(post.date_posted)
+    return render_template('post.html', post=post)
+
+
+@main.route('/post_total', methods=['GET', 'POST'])
+@login_required  # ✅ 只有登录用户可以发布文章
+def post_total():
+    posts = Post.query.order_by(Post.date_posted.desc()).all()  # ✅ 获取所有文章，按时间倒序
+    return render_template('post_total.html', posts=posts)
 
 # 创建新文章
 @main.route('/new_post', methods=['GET', 'POST'])
@@ -74,6 +103,31 @@ def new_post():
         return redirect(url_for('main.index'))  # ✅ 跳转到首页
 
     return render_template('new_post.html', form=form)
+
+# @main.route('/new_post', methods=['GET', 'POST'])
+# @login_required
+# def new_post():
+#     form = PostForm()
+#     if form.validate_on_submit():
+#         try:
+#             content_markdown = form.content.data
+#             content_html = markdown.markdown(content_markdown)
+#         except Exception as e:
+#             flash(f'Markdown 转换失败：{e}', 'danger')
+#             return render_template('new_post.html', form=form)
+#
+#         new_post = Post(
+#             title=form.title.data,
+#             content=content_html,  # 只存储 HTML 内容
+#             user_id=current_user.id
+#         )
+#         db.session.add(new_post)
+#         db.session.commit()
+#         flash('文章发布成功！', 'success')
+#         return redirect(url_for('main.index'))
+#
+#     return render_template('new_post.html', form=form)
+
 
 
 @main.route('/delete_post/<int:post_id>', methods=['POST'])
@@ -133,18 +187,49 @@ def post_detail(post_id):
     return render_template('post_detail.html', post=post, comments=comments, form=form)
 
 
-@main.route('/delete_comment/<int:comment_id>', methods=['POST'])
-@login_required  # ✅ 只有登录用户可以删除
-def delete_comment(comment_id):
-    comment = Comment.query.get_or_404(comment_id)  # ✅ 找到评论
-    if comment.author.id != current_user.id:
-        flash('你没有权限删除这条评论', 'danger')
-        return redirect(url_for('main.post_detail', post_id=comment.post_id))
 
-    db.session.delete(comment)
-    db.session.commit()
-    flash('评论已删除', 'success')
-    return redirect(url_for('main.post_detail', post_id=comment.post_id))
+@main.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('you have logout', 'info')
+    return redirect(url_for('main.login'))
 
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and user.password == form.password.data:
+            login_user(user)
+            flash('login successful！', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            flash('username or password error', 'danger')
 
+    return render_template('login.html', form=form)
 
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        existing_user = User.query.filter_by(username=form.username.data).first()
+        if existing_user:
+            flash('username exist, select other username', 'danger')
+            return redirect(url_for('main.register'))
+
+        new_user = User(username=form.username.data, password=form.password.data)
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('register successful! login please', 'success')
+        return redirect(url_for('main.login'))
+
+    return render_template('register.html', form=form)
+
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    return "这是一个受限页面，只有登录用户可以看到！"
+
+# ... 其他路由 ...

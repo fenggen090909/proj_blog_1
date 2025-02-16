@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, EqualTo
 
+
 # 用户注册表单
 class RegisterForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20)])

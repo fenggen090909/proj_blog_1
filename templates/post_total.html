@@ -61,18 +61,26 @@
             <div class="row gx-4 gx-lg-5 justify-content-center">
                 <div class="col-md-10 col-lg-8 col-xl-7">
                     <div class="container">
-                        <h2 class="mt-4">login</h2>
-                        <form method="POST">
-                            {{ form.hidden_tag() }}
-                            <div class="mb-3">
-                                {{ form.username.label }} {{ form.username(class="form-control") }}
+                        <h2 class="mt-4">博客文章</h2>
+                        {% for post in posts %}
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ post.title }}</h5>
+                                <p class="card-text">{{ post.content[:100] }}...</p>
+                                <p class="text-muted">发布于 {{ post.date_posted.strftime('%Y-%m-%d %H:%M') }}</p>
+                                {% if post.author.id == current_user.id %}  <!-- 只有作者才能编辑 -->
+                                    <a href="{{ url_for('main.edit_post', post_id=post.id) }}" class="btn btn-warning btn-sm">编辑</a>
+                                    <form action="{{ url_for('main.delete_post', post_id=post.id) }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                                    </form>
+                                    <a href="{{ url_for('main.new_post', post_id=post.id) }}" class="btn btn-info btn-sm">评论</a>
+                                {% endif %}
                             </div>
-                            <div class="mb-3">
-                                {{ form.password.label }} {{ form.password(class="form-control") }}
-                            </div>
-                            <button type="submit" class="btn btn-success">{{ form.submit.label }}</button>
-                        </form>
+                        </div>
+                        {% endfor %}
+                        <a href="{{ url_for('main.new_post') }}" class="btn btn-primary mt-3">发布新文章</a>
                     </div>
+
 
 {#                    <div id="post-list">#}
 {#                        <!-- Post preview-->#}

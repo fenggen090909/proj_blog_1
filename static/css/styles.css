@@ -3684,16 +3684,24 @@ textarea.form-control-lg {
   align-items: center;
   justify-content: space-between;
 }
-.navbar-brand {
+
+
+.navbar .navbar-brand {
   padding-top: var(--bs-navbar-brand-padding-y);
   padding-bottom: var(--bs-navbar-brand-padding-y);
   margin-right: var(--bs-navbar-brand-margin-end);
+
   font-size: var(--bs-navbar-brand-font-size);
   color: var(--bs-navbar-brand-color);
   white-space: nowrap;
 }
 .navbar-brand:hover, .navbar-brand:focus {
   color: var(--bs-navbar-brand-hover-color);
+}
+
+
+.navbar .navbar-nav a {
+    margin-left: 0; /* 根据需要调整链接的左边距 */
 }
 
 .navbar-nav {

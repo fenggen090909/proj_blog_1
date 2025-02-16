@@ -5,12 +5,11 @@ from flask_migrate import Migrate
 from config import Config
 import os
 
-
-
-
 # 初始化 Flask
-app = Flask(__name__, template_folder=os.path.abspath('templates'))
+app = Flask(__name__, static_folder='../static', template_folder='../templates')
+# app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config.from_object(Config)
+app.debug = True
 
 # 初始化数据库
 db = SQLAlchemy(app)
